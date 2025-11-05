@@ -20,7 +20,7 @@ TaskStatus → tracks lifecycle (TODO, IN_PROGRESS, REVIEW, DONE)
 
 TaskPriority → shows  task urgency (LOW, MEDIUM, HIGH)
 
->.Execution flow of task creation.
+>.Execution flow of task creation. 
 
 1.)Developer instantiates a Task object
 
@@ -135,12 +135,12 @@ Separation of sync logic vs. storage logic
 
 >>Interesting Design Patterns.
 
-| Pattern                          | Where                               | Why it matters                             |
-| -------------------------------- | ----------------------------------- | ------------------------------------------ |
-| Conflict Resolution Strategy** | `resolve_task_conflict`             | Custom rules (timestamps + completed wins) |
-| Two-Way Sync Algorithm**       | `merge_task_lists`                  | Handles offline/online synchronization     |
-| Command Pattern (implicit)**   | Output lists like `to_update_local` | Defers execution of actual DB operations   |
-| Immutable Merge Output**       | New `merged_task` returned          | Prevents accidental state mutation         |
+| Pattern                          | Where                               | Why it matters                             
+| -------------------------------- | ----------------------------------- | ------------------------------------------ 
+| Conflict Resolution Strategy| `resolve_task_conflict`             | Custom rules (timestamps + completed wins) 
+| Two-Way Sync Algorithm     | `merge_task_lists`                  | Handles offline/online synchronization     
+| Command Pattern (implicit)  | Output lists like `to_update_local` | Defers execution of actual DB operations   
+| Immutable Merge Output      | New `merged_task` returned          | Prevents accidental state mutation         
 
 
 models.py              task_list_merge.py
@@ -150,4 +150,75 @@ TaskStatus enum   →    resolve_task_conflict() applies business logic
 TaskPriority enum →    output queued changes for storage layer
 
 
+PROMPT 2: DEEPENED CODEBASE UNDERSTANDING (How Task Priorities Work.)
+
+✅ 1️⃣ Initial Understanding vs What I Discovered
+
+>.Initial Understanding
+
+-Priority would simply mean HIGH > MEDIUM > LOW
+
+-Sorting tasks mostly rely on priority field alone
+
+-Status and due dates would not affect priority much
+
+>.What I Discovered
+
+-Priority is just one aspect  in the task’s final importance score
+
+-Scoring is actually multi-dimensional
+
+Factors include:
+✅ Priority value
+✅ Due date urgency
+✅ Task status (penalties)
+✅ Tags (boosts)
+✅ Recent updates (boosts)
+
+➡️ Priority influences but does not guarantee a task is top-ranked
+
+
+| Guided Question                    |  Answer                                                  | Insight Gained                             |
+| ---------------------------------- | -------------------------------------------------------------- | ------------------------------------------ |
+| Does HIGH priority always win?     | No — a MEDIUM task due today might outrank it.                 | Due dates can outweigh priority.           |
+| What happens if a task is DONE?    | Score gets reduced by 50 points.                          | Completed tasks always drop in importance. |
+| Do tags matter?                    | Yes — blocker, critical, urgent tags give +8 points. | Certain tags can boost urgency.            |
+| Does being updated recently help?  | Yes — updates < 1 day ago give +5 points.                  | Recent changes increase relevance.         |
+| What if a task is overdue?         | It gets +35 points.                                        | Overdue tasks skyrocket to the top.        |
+| Does priority have numeric values? | Yes — LOW=1, MEDIUM=2, HIGH=4, URGENT=6 (then ×10).            | Priority → weighted scoring system.        |
+
+
+✅ Priority Score Formula.
+Base Score = priority_weight × 10  
+Then add/subtract other factors.
+So:
+
+-URGENT = 6 × 10 = 60 base score
+
+-HIGH = 40
+
+-MEDIUM = 20
+
+-LOW = 10
+
+➡️ A SINGLE overdue day (+35) can override priority differences completely.
+
+✅ 3️⃣ Misconceptions That Got Clarified.
+
+| What I Thought                         | What’s Actually True                                   
+| -------------------------------------- | ------------------------------------------------------ 
+| Priority alone determines ordering     | It’s only one of many scoring factors                  
+| Completed tasks still stay in the list | Completed tasks are pushed to the bottom           
+| Tags are just labels                   | Some tags meaningfully increase urgency                
+| Due dates are optional                 | Due dates dramatically change ranking                  
+| Status doesn’t affect scoring          | Status can make a task irrelevant (big score drop) 
+
+KEY TAKEAWAY;
+
+Task importance isn’t just priority.
+It’s a formula that decides what you should focus on RIGHT NOW.
+
+📌 Highest scoring tasks = most urgent + most important + most recently touched
+📌 Completed tasks = lowest priority
+📌 Overdue tasks = emergency
 
