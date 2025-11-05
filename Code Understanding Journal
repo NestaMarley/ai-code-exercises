@@ -1,1 +1,153 @@
+PROMPT 1; Understanding How Specific Features Work.
+
+✅ Files Related to Task Creation
+
+📌(models.py)
+
+Main components involved:
+
+-Task class
+
+Fields for title, description, priority, status
+
+Metadata fields: id, created_at, updated_at, completed_at
+
+Tags list
+
+-Enums
+
+TaskStatus → tracks lifecycle (TODO, IN_PROGRESS, REVIEW, DONE)
+
+TaskPriority → shows  task urgency (LOW, MEDIUM, HIGH)
+
+>.Execution flow of task creation.
+
+1.)Developer instantiates a Task object
+
+task = Task("Title", "Desc", TaskPriority.MEDIUM)
+
+
+2.)Constructor sets:
+
+Default status: TODO
+
+Default timestamps: created_at & updated_at = now
+
+Empty tags list
+
+3.)The created task is returned to be stored in local or remote storage systems
+
+>.How data is stored / retrieved
+
+Tasks are in-memory objects in tests
+
+The system likely stores them as dictionaries keyed by task.id
+Example in test:
+
+local_tasks = {"task1": self.task1}
+
+
+Storage layer is abstracted away (not shown)
+
+>.
+
+✅ Domain Model Pattern
+
+The Task class encapsulates business logic and state
+
+✅ Enum for state safety
+
+Prevents invalid statuses or priorities
+
+✅ Files Related to Task Status Updates
+
+📌 (task_list_merge.py)
+
+-Main components involved
+
+merge_task_lists(local_tasks, remote_tasks)
+
+Syncs two task lists from different sources
+
+Produces:
+
+merged dict of tasks
+
+lists of tasks that need actions:
+
+create locally
+
+create remotely
+
+update locally
+
+update remotely
+
+resolve_task_conflict(local_task, remote_task)
+
+Compares updated_at timestamps
+
+Resolves status differences:
+
+A DONE status always wins
+
+Merges tags (no duplication)
+
+Returns:
+
+merged task object
+
+whether local needs update
+
+whether remote needs update
+
+.>Execution flow of a task update
+
+1.)Detect task exists in both local & remote lists
+
+2.)Compare modification times:
+
+Newest update decides main fields
+
+3.)If either version is DONE:
+
+Completed one takes priority
+
+4.)Merge tags → deduplicate list
+
+5.)Set action flags:
+
+update_local if local is outdated
+
+update_remote if remote is outdated
+
+6.)Return merged result to be persisted as needed
+
+->.How data is stored / retrieved
+
+Tasks are tracked in dict-like structures
+
+{ task_id: Task }
+
+Merge returns instructions, not database actions:
+
+Separation of sync logic vs. storage logic
+
+>>Interesting Design Patterns.
+
+| Pattern                          | Where                               | Why it matters                             |
+| -------------------------------- | ----------------------------------- | ------------------------------------------ |
+| Conflict Resolution Strategy** | `resolve_task_conflict`             | Custom rules (timestamps + completed wins) |
+| Two-Way Sync Algorithm**       | `merge_task_lists`                  | Handles offline/online synchronization     |
+| Command Pattern (implicit)**   | Output lists like `to_update_local` | Defers execution of actual DB operations   |
+| Immutable Merge Output**       | New `merged_task` returned          | Prevents accidental state mutation         |
+
+
+models.py              task_list_merge.py
+------------          --------------------
+Task() created   →    merge_task_lists() detects source of truth
+TaskStatus enum   →    resolve_task_conflict() applies business logic
+TaskPriority enum →    output queued changes for storage layer
+
+
 
